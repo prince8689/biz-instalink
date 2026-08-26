@@ -14,7 +14,110 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      lead_results: {
+        Row: {
+          address: string | null
+          business_name: string
+          category: string | null
+          city: string | null
+          created_at: string
+          google_maps_url: string | null
+          id: string
+          instagram_handle: string | null
+          instagram_url: string
+          instagram_verified: boolean
+          phone: string
+          place_id: string | null
+          rating: number
+          rating_count: number
+          search_id: string
+          status: string
+        }
+        Insert: {
+          address?: string | null
+          business_name: string
+          category?: string | null
+          city?: string | null
+          created_at?: string
+          google_maps_url?: string | null
+          id?: string
+          instagram_handle?: string | null
+          instagram_url: string
+          instagram_verified?: boolean
+          phone: string
+          place_id?: string | null
+          rating: number
+          rating_count: number
+          search_id: string
+          status?: string
+        }
+        Update: {
+          address?: string | null
+          business_name?: string
+          category?: string | null
+          city?: string | null
+          created_at?: string
+          google_maps_url?: string | null
+          id?: string
+          instagram_handle?: string | null
+          instagram_url?: string
+          instagram_verified?: boolean
+          phone?: string
+          place_id?: string | null
+          rating?: number
+          rating_count?: number
+          search_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_results_search_id_fkey"
+            columns: ["search_id"]
+            isOneToOne: false
+            referencedRelation: "lead_searches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_searches: {
+        Row: {
+          businesses_found: number
+          category: string
+          city: string
+          created_at: string
+          id: string
+          max_rating: number
+          min_rating: number
+          rating_matches: number
+          status: string
+          verified_leads: number
+        }
+        Insert: {
+          businesses_found?: number
+          category: string
+          city: string
+          created_at?: string
+          id?: string
+          max_rating?: number
+          min_rating?: number
+          rating_matches?: number
+          status?: string
+          verified_leads?: number
+        }
+        Update: {
+          businesses_found?: number
+          category?: string
+          city?: string
+          created_at?: string
+          id?: string
+          max_rating?: number
+          min_rating?: number
+          rating_matches?: number
+          status?: string
+          verified_leads?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
