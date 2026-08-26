@@ -59,7 +59,7 @@ interface SerperResponse {
 export function normalizeInstagramUrl(raw: string): { url: string; handle: string } | null {
   const match = raw.match(/instagram\.com\/([^/?#\s]+)/i);
   if (!match) return null;
-  let handle = match[1].toLowerCase().replace(/[^a-z0-9._]/g, "");
+  let handle = match[1]!.toLowerCase().replace(/[^a-z0-9._]/g, "");
   handle = handle.replace(/^[._]+|[._]+$/g, "");
   if (!handle || handle.length < 2 || handle.length > 30) return null;
   if (NON_PROFILE_SEGMENTS.has(handle)) return null;

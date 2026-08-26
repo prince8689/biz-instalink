@@ -146,7 +146,7 @@ export async function fetchBusinesses(
   async function worker() {
     while (cursor < unique.length) {
       const index = cursor++;
-      const c = unique[index];
+      const c = unique[index]!;
       let details: DetailsResponse["result"] | null = null;
       if (c.place_id) {
         try {
