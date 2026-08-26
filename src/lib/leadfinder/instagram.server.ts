@@ -18,6 +18,17 @@ const NON_PROFILE_SEGMENTS = new Set([
   "legal",
   "developer",
   "about",
+  // Generic/aggregator handles that are never a business's own profile.
+  "popular",
+  "directory",
+  "web",
+  "home",
+  "search",
+  "help",
+  "privacy",
+  "terms",
+  "blog",
+  "press",
 ]);
 
 const STOPWORDS = new Set([
@@ -186,9 +197,20 @@ export async function findVerifiedInstagram(
     }
     if (!best) continue;
 
+    // The handle itself must share a meaningful token with the business
+    // name — a snippet-only mention (e.g. an aggregator page listing many
+    // businesses) is not enough to accept a profile.
+    const nameTokens = tokenize(businessName);
+    const handleText = best.candidate.handle.replace(/[._]/g, " ");
+    const strongTokens = nameTokens.filter((t) => t.length > 3);
+    const handleSharesName = (strongTokens.length > 0 ? strongTokens : nameTokens).some((t) =>
+      handleText.includes(t),
+    );
+
     // Exact handle/name match needs weaker supporting signals.
     const accept =
-      best.nameScore >= 0.99 ? best.score >= 0.6 : best.score >= 0.8 && best.nameScore >= 0.5;
+      handleSharesName &&
+      (best.nameScore >= 0.99 ? best.score >= 0.6 : best.score >= 0.8 && best.nameScore >= 0.5);
     if (accept) {
       return {
         url: best.candidate.url,
