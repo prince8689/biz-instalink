@@ -27,6 +27,8 @@ export type Database = {
           instagram_url: string
           instagram_verified: boolean
           phone: string
+          phone_line_type: string
+          phone_valid: boolean
           place_id: string | null
           rating: number
           rating_count: number
@@ -45,6 +47,8 @@ export type Database = {
           instagram_url: string
           instagram_verified?: boolean
           phone: string
+          phone_line_type?: string
+          phone_valid?: boolean
           place_id?: string | null
           rating: number
           rating_count: number
@@ -63,6 +67,8 @@ export type Database = {
           instagram_url?: string
           instagram_verified?: boolean
           phone?: string
+          phone_line_type?: string
+          phone_valid?: boolean
           place_id?: string | null
           rating?: number
           rating_count?: number
