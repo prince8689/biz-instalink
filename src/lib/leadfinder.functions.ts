@@ -138,6 +138,8 @@ export const saveSearch = createServerFn({ method: "POST" })
         instagram_url: lead.instagram_url,
         instagram_handle: lead.instagram_handle,
         instagram_verified: lead.instagram_verified,
+        phone_valid: lead.phone_valid,
+        phone_line_type: lead.phone_line_type,
         status: "verified",
       }));
       const { error: leadsError } = await db.from("lead_results").insert(rows);
@@ -173,7 +175,7 @@ export const getSearchResults = createServerFn({ method: "POST" })
     const { data: rows, error } = await db
       .from("lead_results")
       .select(
-        "business_name, phone, rating, rating_count, address, category, city, google_maps_url, place_id, instagram_url, instagram_handle, instagram_verified",
+        "business_name, phone, rating, rating_count, address, category, city, google_maps_url, place_id, instagram_url, instagram_handle, instagram_verified, phone_valid, phone_line_type",
       )
       .eq("search_id", data.searchId)
       .order("business_name", { ascending: true });
