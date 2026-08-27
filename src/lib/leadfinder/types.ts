@@ -17,7 +17,10 @@ export interface BusinessCandidate {
   address: string | null;
   mapsUrl: string | null;
   googleCategory: string | null;
+  phoneValid: boolean;
+  phoneLineType: string;
 }
+
 
 export interface SearchStats {
   /** Raw businesses returned by Google Places before dedupe. */
