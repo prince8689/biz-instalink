@@ -228,7 +228,10 @@ function Index() {
               instagram_url: match.url,
               instagram_handle: match.handle,
               instagram_verified: true,
+              phone_valid: business.phoneValid,
+              phone_line_type: business.phoneLineType,
             });
+
           }
           if (isCurrent()) {
             setProgress({
