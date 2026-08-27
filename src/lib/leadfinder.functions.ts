@@ -46,16 +46,24 @@ export const searchBusinesses = createServerFn({ method: "POST" })
         (b): b is RawBusiness & { phone: string; rating: number; ratingCount: number } =>
           Boolean(b.name) && Boolean(b.phone) && b.rating != null && b.ratingCount != null,
       )
-      .map((b) => ({
-        placeId: b.placeId,
-        name: b.name,
-        phone: b.phone,
-        rating: b.rating,
-        ratingCount: b.ratingCount,
-        address: b.address,
-        mapsUrl: b.mapsUrl,
-        googleCategory: b.googleCategory,
-      }));
+      .map((b) => {
+        const check = verifyPhone(b.phone);
+        return {
+          placeId: b.placeId,
+          name: b.name,
+          phone: check.formatted,
+          rating: b.rating,
+          ratingCount: b.ratingCount,
+          address: b.address,
+          mapsUrl: b.mapsUrl,
+          googleCategory: b.googleCategory,
+          phoneValid: check.valid,
+          phoneLineType: check.lineType,
+        };
+      })
+      // STEP 6b: only keep businesses whose number is a real, dialable line.
+      .filter((b) => b.phoneValid);
+
 
     return {
       businesses: eligible,
