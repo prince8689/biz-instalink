@@ -17,7 +17,10 @@ export interface BusinessCandidate {
   address: string | null;
   mapsUrl: string | null;
   googleCategory: string | null;
+  phoneValid: boolean;
+  phoneLineType: string;
 }
+
 
 export interface SearchStats {
   /** Raw businesses returned by Google Places before dedupe. */
@@ -56,7 +59,10 @@ export interface VerifiedLead {
   instagram_url: string;
   instagram_handle: string;
   instagram_verified: boolean;
+  phone_valid: boolean;
+  phone_line_type: string;
 }
+
 
 export interface SearchRecord {
   id: string;

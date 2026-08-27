@@ -3,6 +3,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { fetchBusinesses, type RawBusiness } from "./leadfinder/google.server";
 import { findVerifiedInstagram } from "./leadfinder/instagram.server";
 import { getDb } from "./leadfinder/db.server";
+import { verifyPhone } from "./leadfinder/phone.server";
+
 import type {
   BusinessCandidate,
   InstagramMatch,
@@ -46,16 +48,24 @@ export const searchBusinesses = createServerFn({ method: "POST" })
         (b): b is RawBusiness & { phone: string; rating: number; ratingCount: number } =>
           Boolean(b.name) && Boolean(b.phone) && b.rating != null && b.ratingCount != null,
       )
-      .map((b) => ({
-        placeId: b.placeId,
-        name: b.name,
-        phone: b.phone,
-        rating: b.rating,
-        ratingCount: b.ratingCount,
-        address: b.address,
-        mapsUrl: b.mapsUrl,
-        googleCategory: b.googleCategory,
-      }));
+      .map((b) => {
+        const check = verifyPhone(b.phone);
+        return {
+          placeId: b.placeId,
+          name: b.name,
+          phone: check.formatted,
+          rating: b.rating,
+          ratingCount: b.ratingCount,
+          address: b.address,
+          mapsUrl: b.mapsUrl,
+          googleCategory: b.googleCategory,
+          phoneValid: check.valid,
+          phoneLineType: check.lineType,
+        };
+      })
+      // STEP 6b: only keep businesses whose number is a real, dialable line.
+      .filter((b) => b.phoneValid);
+
 
     return {
       businesses: eligible,
@@ -128,6 +138,8 @@ export const saveSearch = createServerFn({ method: "POST" })
         instagram_url: lead.instagram_url,
         instagram_handle: lead.instagram_handle,
         instagram_verified: lead.instagram_verified,
+        phone_valid: lead.phone_valid,
+        phone_line_type: lead.phone_line_type,
         status: "verified",
       }));
       const { error: leadsError } = await db.from("lead_results").insert(rows);
@@ -163,7 +175,7 @@ export const getSearchResults = createServerFn({ method: "POST" })
     const { data: rows, error } = await db
       .from("lead_results")
       .select(
-        "business_name, phone, rating, rating_count, address, category, city, google_maps_url, place_id, instagram_url, instagram_handle, instagram_verified",
+        "business_name, phone, rating, rating_count, address, category, city, google_maps_url, place_id, instagram_url, instagram_handle, instagram_verified, phone_valid, phone_line_type",
       )
       .eq("search_id", data.searchId)
       .order("business_name", { ascending: true });

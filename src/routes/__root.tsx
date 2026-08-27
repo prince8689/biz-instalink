@@ -77,7 +77,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "AI Business Lead Finder — Verified Local Leads with Instagram" },
+      { title: "LeadRadar AI — Verified Business Leads with Instagram & Phone Check" },
       {
         name: "description",
         content:
@@ -85,7 +85,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         property: "og:title",
-        content: "AI Business Lead Finder — Verified Local Leads with Instagram",
+        content: "LeadRadar AI — Verified Business Leads with Instagram & Phone Check",
       },
       {
         property: "og:description",

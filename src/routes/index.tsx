@@ -13,7 +13,7 @@ import type { SearchRecord, VerifiedLead } from "@/lib/leadfinder/types";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "AI Business Lead Finder — Verified Local Leads with Instagram" },
+      { title: "LeadRadar AI — Verified Business Leads with Instagram & Phone Check" },
       {
         name: "description",
         content:
@@ -21,7 +21,7 @@ export const Route = createFileRoute("/")({
       },
       {
         property: "og:title",
-        content: "AI Business Lead Finder — Verified Local Leads with Instagram",
+        content: "LeadRadar AI — Verified Business Leads with Instagram & Phone Check",
       },
       {
         property: "og:description",
@@ -228,7 +228,10 @@ function Index() {
               instagram_url: match.url,
               instagram_handle: match.handle,
               instagram_verified: true,
+              phone_valid: business.phoneValid,
+              phone_line_type: business.phoneLineType,
             });
+
           }
           if (isCurrent()) {
             setProgress({
@@ -324,9 +327,19 @@ function Index() {
   };
 
   const exportCsv = () => {
-    const header = "Business Name,Mobile Number,Rating,Number of Ratings,Instagram";
+    const header = "Business Name,Mobile Number,Phone Verified,Line Type,Rating,Number of Ratings,Instagram";
     const lines = leads.map((l) =>
-      [l.business_name, l.phone, l.rating, l.rating_count, l.instagram_url].map(csvEscape).join(","),
+      [
+        l.business_name,
+        l.phone,
+        l.phone_valid ? "yes" : "no",
+        l.phone_line_type,
+        l.rating,
+        l.rating_count,
+        l.instagram_url,
+      ]
+        .map(csvEscape)
+        .join(","),
     );
     downloadFile("business-leads.csv", [header, ...lines].join("\n"), "text/csv");
   };
@@ -335,6 +348,8 @@ function Index() {
     const payload = leads.map((l) => ({
       business_name: l.business_name,
       mobile_number: l.phone,
+      phone_verified: l.phone_valid,
+      phone_line_type: l.phone_line_type,
       rating: l.rating,
       number_of_ratings: l.rating_count,
       instagram: l.instagram_url,
@@ -387,16 +402,19 @@ function Index() {
                 className="h-5 w-5"
                 aria-hidden="true"
               >
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" />
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+                <path d="M12 5.5a6.5 6.5 0 0 1 6.5 6.5" />
+                <path d="M12 18.5A6.5 6.5 0 0 1 5.5 12" />
               </svg>
             </div>
             <div>
               <h1 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                AI Business Lead Finder
+                LeadRadar <span className="text-primary">AI</span>
               </h1>
               <p className="text-sm text-muted-foreground">
-                Find verified local businesses with Google ratings and official Instagram profiles.
+                Google Maps-wide business discovery with verified phone numbers and official
+                Instagram profiles.
               </p>
             </div>
           </div>
@@ -591,6 +609,7 @@ function Index() {
                   <tr className="border-b text-xs uppercase tracking-wide text-muted-foreground">
                     <th className="px-5 py-3 font-semibold">Business Name</th>
                     <th className="px-5 py-3 font-semibold">Mobile Number</th>
+                    <th className="px-5 py-3 font-semibold">Phone Check</th>
                     <th className="px-5 py-3 font-semibold">Rating</th>
                     <th className="px-5 py-3 font-semibold">Number of Ratings</th>
                     <th className="px-5 py-3 font-semibold">Instagram</th>
@@ -686,6 +705,17 @@ function LeadRow({
         <td className="px-5 py-3 font-medium text-foreground">{lead.business_name}</td>
         <td className="px-5 py-3 text-foreground">{lead.phone}</td>
         <td className="px-5 py-3">
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
+              lead.phone_valid
+                ? "bg-success text-success-foreground"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {lead.phone_valid ? "Active line" : "Unverified"}
+          </span>
+        </td>
+        <td className="px-5 py-3">
           <span className="inline-flex items-center gap-1 font-semibold text-foreground">
             <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5 text-amber-500" aria-hidden="true">
               <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
@@ -717,10 +747,15 @@ function LeadRow({
       </tr>
       {expanded && (
         <tr className="bg-muted/20">
-          <td colSpan={6} className="px-5 py-4">
+          <td colSpan={7} className="px-5 py-4">
             <dl className="grid grid-cols-1 gap-x-8 gap-y-2 text-xs sm:grid-cols-2 lg:grid-cols-3">
               <Detail label="Address" value={lead.address ?? "—"} />
               <Detail label="Category" value={lead.category ?? "—"} />
+              <Detail label="Phone Line Type" value={lead.phone_line_type || "unknown"} />
+              <Detail
+                label="Phone Verification"
+                value={lead.phone_valid ? "Valid & dialable" : "Could not verify"}
+              />
               <Detail label="Place ID" value={lead.place_id ?? "—"} mono />
               <Detail label="Instagram Handle" value={`@${lead.instagram_handle}`} mono />
               <Detail
