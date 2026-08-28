@@ -17,17 +17,11 @@ export interface AdminUserRow {
   searches: number;
 }
 
-async function assertAdmin(supabase: {
-  rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown }>;
-}, userId: string) {
-  const { data } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
-  if (!data) throw new Error("Admin access required.");
-}
-
 /** All registered users with their plan + payment summary. */
 export const adminListUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AdminUserRow[]> => {
+    const { assertAdmin } = await import("./admin.server");
     await assertAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -80,6 +74,7 @@ export const adminSetWeeklyPrice = createServerFn({ method: "POST" })
   .inputValidator((data) => data as { rupees: number })
   .middleware([requireSupabaseAuth])
   .handler(async ({ data, context }) => {
+    const { assertAdmin } = await import("./admin.server");
     await assertAdmin(context.supabase, context.userId);
     const rupees = Number(data.rupees);
     if (!Number.isFinite(rupees) || rupees < 1 || rupees > 100000) {
@@ -100,6 +95,7 @@ export const adminSetBlocked = createServerFn({ method: "POST" })
   .inputValidator((data) => data as { userId: string; blocked: boolean })
   .middleware([requireSupabaseAuth])
   .handler(async ({ data, context }) => {
+    const { assertAdmin } = await import("./admin.server");
     await assertAdmin(context.supabase, context.userId);
     const targetId = String(data.userId ?? "");
     if (!/^[0-9a-f-]{36}$/i.test(targetId)) throw new Error("Invalid user.");
@@ -121,6 +117,7 @@ export const adminAdjustAccess = createServerFn({ method: "POST" })
   .inputValidator((data) => data as { userId: string; weeks: number })
   .middleware([requireSupabaseAuth])
   .handler(async ({ data, context }) => {
+    const { assertAdmin } = await import("./admin.server");
     await assertAdmin(context.supabase, context.userId);
     const targetId = String(data.userId ?? "");
     if (!/^[0-9a-f-]{36}$/i.test(targetId)) throw new Error("Invalid user.");
