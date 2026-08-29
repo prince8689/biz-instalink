@@ -259,7 +259,13 @@ function Index() {
         igTotal: eligible.length,
         verified: verifiedLeads.length,
       });
-      await saveSearch({
+           verifiedLeads.sort((a, b) => b.rating - a.rating);
+
+      // SHOW CURRENT LEADS IMMEDIATELY.
+      setLeads([...verifiedLeads]);
+
+      // Database persistence is secondary and must never block the UI.
+      saveSearch({
         data: {
           ...config,
           stats: {
@@ -269,11 +275,11 @@ function Index() {
           },
           leads: verifiedLeads,
         },
-      }).catch(() => {});
-      refreshHistory();
+      }).catch((error) => {
+        console.error("Could not save leads:", error);
+      });
 
-      verifiedLeads.sort((a, b) => b.rating - a.rating);
-      setLeads(verifiedLeads);
+      refreshHistory();
       setProgress({
         phase: "done",
         message:
