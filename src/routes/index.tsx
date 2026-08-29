@@ -229,7 +229,7 @@ function Index() {
     instagram_handle: match.handle ?? "",
     instagram_verified: true,
   });
-}
+
           }
           if (isCurrent()) {
             setProgress({
