@@ -1,12 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
-import { requireActiveAccess } from "./leadfinder/access.server";
 import { fetchBusinesses, type RawBusiness } from "./leadfinder/google.server";
 import { findVerifiedInstagram } from "./leadfinder/instagram.server";
-import { verifyPhone } from "./leadfinder/phone.server";
-
+import { getDb } from "./leadfinder/db.server";
 import type {
   BusinessCandidate,
   InstagramMatch,
@@ -20,11 +16,8 @@ import type {
  * rating filter and keep only businesses with all required Google fields.
  */
 export const searchBusinesses = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((data) => data as SearchConfig)
-  .handler(async ({ data, context }) => {
-    await requireActiveAccess(context.supabase, context.userId);
-
+  .handler(async ({ data }) => {
     const apiKey = process.env["GOOGLE_PLACES_API_KEY"];
     if (!apiKey) {
       throw new Error("Google Places API key is not configured on the server.");
@@ -53,23 +46,16 @@ export const searchBusinesses = createServerFn({ method: "POST" })
         (b): b is RawBusiness & { phone: string; rating: number; ratingCount: number } =>
           Boolean(b.name) && Boolean(b.phone) && b.rating != null && b.ratingCount != null,
       )
-      .map((b) => {
-        const check = verifyPhone(b.phone);
-        return {
-          placeId: b.placeId,
-          name: b.name,
-          phone: check.formatted,
-          rating: b.rating,
-          ratingCount: b.ratingCount,
-          address: b.address,
-          mapsUrl: b.mapsUrl,
-          googleCategory: b.googleCategory,
-          phoneValid: check.valid,
-          phoneLineType: check.lineType,
-        };
-      })
-      // STEP 6b: only keep businesses whose number is a real, dialable line.
-      .filter((b) => b.phoneValid);
+      .map((b) => ({
+        placeId: b.placeId,
+        name: b.name,
+        phone: b.phone,
+        rating: b.rating,
+        ratingCount: b.ratingCount,
+        address: b.address,
+        mapsUrl: b.mapsUrl,
+        googleCategory: b.googleCategory,
+      }));
 
     return {
       businesses: eligible,
@@ -86,29 +72,20 @@ export const searchBusinesses = createServerFn({ method: "POST" })
  * STEP 7-8: find and verify the official Instagram profile for one business.
  */
 export const findInstagram = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((data) => data as { businessName: string; city: string; category: string })
-  .handler(async ({ data, context }): Promise<InstagramMatch | null> => {
-    await requireActiveAccess(context.supabase, context.userId);
-
+  .handler(async ({ data }): Promise<InstagramMatch | null> => {
     const apiKey = process.env["SERPER_API_KEY"];
     if (!apiKey) {
       throw new Error("Web search API key is not configured on the server.");
     }
     if (!data.businessName?.trim()) return null;
-    return findVerifiedInstagram(
-      data.businessName.trim(),
-      data.city.trim(),
-      data.category.trim(),
-      apiKey,
-    );
+    return findVerifiedInstagram(data.businessName.trim(), data.city.trim(), data.category.trim(), apiKey);
   });
 
 /**
  * Persists a completed search plus its verified leads (STEP 10 + history).
  */
 export const saveSearch = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator(
     (data) =>
       data as SearchConfig & {
@@ -116,12 +93,11 @@ export const saveSearch = createServerFn({ method: "POST" })
         leads: VerifiedLead[];
       },
   )
-  .handler(async ({ data, context }) => {
-    const db = context.supabase;
+  .handler(async ({ data }) => {
+    const db = getDb();
     const { data: search, error: searchError } = await db
       .from("lead_searches")
       .insert({
-        user_id: context.userId,
         city: data.city,
         category: data.category,
         min_rating: data.minRating,
@@ -152,8 +128,6 @@ export const saveSearch = createServerFn({ method: "POST" })
         instagram_url: lead.instagram_url,
         instagram_handle: lead.instagram_handle,
         instagram_verified: lead.instagram_verified,
-        phone_valid: lead.phone_valid,
-        phone_line_type: lead.phone_line_type,
         status: "verified",
       }));
       const { error: leadsError } = await db.from("lead_results").insert(rows);
@@ -166,30 +140,30 @@ export const saveSearch = createServerFn({ method: "POST" })
   });
 
 /** Recent search history for the dashboard. */
-export const listSearches = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<SearchRecord[]> => {
-    const { data, error } = await context.supabase
-      .from("lead_searches")
-      .select(
-        "id, city, category, min_rating, max_rating, status, businesses_found, rating_matches, verified_leads, created_at",
-      )
-      .eq("user_id", context.userId)
-      .order("created_at", { ascending: false })
-      .limit(20);
-    if (error) throw new Error(`Could not load history: ${error.message}`);
-    return (data ?? []) as unknown as SearchRecord[];
-  });
+export const listSearches = createServerFn({ method: "GET" }).handler(async (): Promise<
+  SearchRecord[]
+> => {
+  const db = getDb();
+  const { data, error } = await db
+    .from("lead_searches")
+    .select(
+      "id, city, category, min_rating, max_rating, status, businesses_found, rating_matches, verified_leads, created_at",
+    )
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if (error) throw new Error(`Could not load history: ${error.message}`);
+  return (data ?? []) as unknown as SearchRecord[];
+});
 
 /** Loads the verified leads of a previous search. */
 export const getSearchResults = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((data) => data as { searchId: string })
-  .handler(async ({ data, context }): Promise<VerifiedLead[]> => {
-    const { data: rows, error } = await context.supabase
+  .handler(async ({ data }): Promise<VerifiedLead[]> => {
+    const db = getDb();
+    const { data: rows, error } = await db
       .from("lead_results")
       .select(
-        "business_name, phone, rating, rating_count, address, category, city, google_maps_url, place_id, instagram_url, instagram_handle, instagram_verified, phone_valid, phone_line_type",
+        "business_name, phone, rating, rating_count, address, category, city, google_maps_url, place_id, instagram_url, instagram_handle, instagram_verified",
       )
       .eq("search_id", data.searchId)
       .order("business_name", { ascending: true });

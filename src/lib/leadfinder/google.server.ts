@@ -93,70 +93,52 @@ async function searchPage(
 }
 
 /**
- * Searches Google Places the way Google Maps behaves: several natural query
- * variants (in / near / around / nearby areas) are executed, every page of
- * each is walked, and results are merged. This surfaces relevant businesses
- * from the surrounding area too, not only ones strictly inside the city.
+ * Searches Google Places for "<category> in <city>", walks all available
+ * result pages and removes duplicates by Place ID (falling back to
+ * normalized name + address).
  */
 export async function fetchBusinesses(
   city: string,
   category: string,
   apiKey: string,
 ): Promise<{ businesses: RawBusiness[]; rawCount: number }> {
-  const queries = [
-    `${category} in ${city}`,
-    `${category} near ${city}`,
-    `best ${category} around ${city}`,
-    `${category} nearby ${city}`,
-    `${city} ${category}`,
-  ];
+  const textQuery = `${category} in ${city}`;
 
   const seen = new Set<string>();
   const businesses: RawBusiness[] = [];
   let rawCount = 0;
+  let pageToken: string | undefined;
 
-  for (const textQuery of queries) {
-    let pageToken: string | undefined;
-    for (let page = 0; page < MAX_PAGES; page++) {
-      let data: SearchTextResponse;
-      try {
-        data = await searchPage(apiKey, textQuery, pageToken);
-      } catch (error) {
-        // A single failing variant must not kill the whole broadened search,
-        // unless nothing at all has been collected yet.
-        if (businesses.length === 0 && textQuery === queries[0]) throw error;
-        break;
-      }
-      const places = data.places ?? [];
-      rawCount += places.length;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const data = await searchPage(apiKey, textQuery, pageToken);
+    const places = data.places ?? [];
+    rawCount += places.length;
 
-      for (const place of places) {
-        const key = place.id
-          ? `pid:${place.id}`
-          : `na:${normalizeKeyPart(place.displayName?.text)}|${normalizeKeyPart(place.formattedAddress)}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        businesses.push({
-          placeId: place.id ?? null,
-          name: place.displayName?.text ?? "",
-          phone: place.internationalPhoneNumber ?? place.nationalPhoneNumber ?? null,
-          rating: place.rating ?? null,
-          ratingCount: place.userRatingCount ?? null,
-          address: place.formattedAddress ?? null,
-          mapsUrl:
-            place.googleMapsUri ??
-            (place.id ? `https://www.google.com/maps/place/?q=place_id:${place.id}` : null),
-          googleCategory: place.primaryTypeDisplayName?.text ?? null,
-        });
-      }
-
-      if (!data.nextPageToken) break;
-      pageToken = data.nextPageToken;
-      // The next page token needs a brief moment before it becomes valid.
-      await sleep(2000);
+    for (const place of places) {
+      const key = place.id
+        ? `pid:${place.id}`
+        : `na:${normalizeKeyPart(place.displayName?.text)}|${normalizeKeyPart(place.formattedAddress)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      businesses.push({
+        placeId: place.id ?? null,
+        name: place.displayName?.text ?? "",
+        phone: place.internationalPhoneNumber ?? place.nationalPhoneNumber ?? null,
+        rating: place.rating ?? null,
+        ratingCount: place.userRatingCount ?? null,
+        address: place.formattedAddress ?? null,
+        mapsUrl:
+          place.googleMapsUri ??
+          (place.id ? `https://www.google.com/maps/place/?q=place_id:${place.id}` : null),
+        googleCategory: place.primaryTypeDisplayName?.text ?? null,
+      });
     }
+
+    if (!data.nextPageToken) break;
+    pageToken = data.nextPageToken;
+    // The next page token needs a brief moment before it becomes valid.
+    await sleep(2000);
   }
 
   return { businesses, rawCount };
 }
-
