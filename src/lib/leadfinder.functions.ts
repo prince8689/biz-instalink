@@ -151,8 +151,12 @@ export const listSearches = createServerFn({ method: "GET" }).handler(async (): 
     )
     .order("created_at", { ascending: false })
     .limit(20);
-  if (error) throw new Error(`Could not load history: ${error.message}`);
-  return (data ?? []) as unknown as SearchRecord[];
+ if (error) {
+  console.error("Could not load history:", error.message);
+  return [];
+}
+
+return (data ?? []) as unknown as SearchRecord[];
 });
 
 /** Loads the verified leads of a previous search. */
