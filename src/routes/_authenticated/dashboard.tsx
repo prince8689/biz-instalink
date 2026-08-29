@@ -9,24 +9,22 @@ import {
   searchBusinesses,
 } from "@/lib/leadfinder.functions";
 import type { SearchRecord, VerifiedLead } from "@/lib/leadfinder/types";
+import { AppHeader } from "@/components/AppHeader";
+import { PlanGate } from "@/components/PlanGate";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
-      { title: "LeadRadar AI — Verified Business Leads with Instagram & Phone Check" },
+      { title: "Lead Dashboard — LeadRadar AI" },
       {
         name: "description",
         content:
-          "Find verified local businesses by city, category and Google rating range — complete with phone numbers and official Instagram profiles.",
+          "Run Google Maps-wide business searches and export verified leads with phone and Instagram checks.",
       },
-      {
-        property: "og:title",
-        content: "LeadRadar AI — Verified Business Leads with Instagram & Phone Check",
-      },
+      { property: "og:title", content: "Lead Dashboard — LeadRadar AI" },
       {
         property: "og:description",
-        content:
-          "Find verified local businesses by city, category and Google rating range — complete with phone numbers and official Instagram profiles.",
+        content: "Run searches and export verified business leads.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -387,38 +385,9 @@ function Index() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
-        {/* Header */}
-        <header className="mb-8">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-5 w-5"
-                aria-hidden="true"
-              >
-                <circle cx="12" cy="12" r="3" />
-                <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
-                <path d="M12 5.5a6.5 6.5 0 0 1 6.5 6.5" />
-                <path d="M12 18.5A6.5 6.5 0 0 1 5.5 12" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                LeadRadar <span className="text-primary">AI</span>
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Google Maps-wide business discovery with verified phone numbers and official
-                Instagram profiles.
-              </p>
-            </div>
-          </div>
-        </header>
+        <AppHeader />
+
+        <PlanGate />
 
         {/* Search configuration */}
         <section
