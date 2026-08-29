@@ -214,21 +214,22 @@ function Index() {
             match = null; // treat lookup failures as "not found"
           }
           checked++;
-          if (match?.verified) {
-            verifiedLeads.push({
-              business_name: business.name,
-              phone: business.phone,
-              rating: business.rating,
-              rating_count: business.ratingCount,
-              address: business.address,
-              category: config.category,
-              city: config.city,
-              google_maps_url: business.mapsUrl,
-              place_id: business.placeId,
-              instagram_url: match.url,
-              instagram_handle: match.handle,
-              instagram_verified: true,
-            });
+         if (match?.url) {
+  verifiedLeads.push({
+    business_name: business.name,
+    phone: business.phone,
+    rating: business.rating,
+    rating_count: business.ratingCount,
+    address: business.address,
+    category: config.category,
+    city: config.city,
+    google_maps_url: business.mapsUrl,
+    place_id: business.placeId,
+    instagram_url: match.url,
+    instagram_handle: match.handle ?? "",
+    instagram_verified: true,
+  });
+}
           }
           if (isCurrent()) {
             setProgress({
