@@ -3,7 +3,7 @@
 // instagram.com profile link appeared in search results AND it passes
 // verification signals against the business data.
 
-const SERPER_URL = "https://google.serper.dev/search";
+import { webSearch, type SearchHit } from "./search.server";
 
 const NON_PROFILE_SEGMENTS = new Set([
   "p",
@@ -54,16 +54,6 @@ export interface InstagramMatchResult {
   verified: boolean;
   confidence: number;
   sourceQuery: string;
-}
-
-interface SerperOrganic {
-  link?: string;
-  title?: string;
-  snippet?: string;
-}
-
-interface SerperResponse {
-  organic?: SerperOrganic[];
 }
 
 /** Extracts and normalizes an instagram.com profile URL, or null. */
@@ -121,29 +111,6 @@ function scoreCandidate(
   return { score: Math.max(0, Math.min(1, score)), nameScore };
 }
 
-async function serperSearch(query: string, apiKey: string): Promise<SerperOrganic[]> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 20000);
-  try {
-    const res = await fetch(SERPER_URL, {
-      method: "POST",
-      headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({ q: query, num: 10 }),
-      signal: controller.signal,
-    });
-    if (res.status === 429) {
-      throw new Error("Instagram search rate limit reached. Please wait and try again.");
-    }
-    if (!res.ok) {
-      throw new Error(`Web search provider error (${res.status})`);
-    }
-    const data = (await res.json()) as SerperResponse;
-    return data.organic ?? [];
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 /**
  * Finds the official Instagram profile for a business using dynamically
  * generated search prompts, then verifies candidates against the business
@@ -153,7 +120,7 @@ export async function findVerifiedInstagram(
   businessName: string,
   city: string,
   category: string,
-  apiKey: string,
+  apiKey?: string,
 ): Promise<InstagramMatchResult | null> {
   // Dynamically generated prompts — never literal placeholders.
   const queries = [
@@ -165,12 +132,7 @@ export async function findVerifiedInstagram(
   const bestByHandle = new Map<string, { candidate: Candidate; score: number; nameScore: number }>();
 
   for (const query of queries) {
-    let organic: SerperOrganic[];
-    try {
-      organic = await serperSearch(query, apiKey);
-    } catch {
-      continue; // try the next query / fallback
-    }
+    const organic: SearchHit[] = await webSearch(query, apiKey);
 
     for (const item of organic) {
       if (!item.link || !/instagram\.com/i.test(item.link)) continue;
