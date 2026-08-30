@@ -17,6 +17,8 @@ export interface BusinessCandidate {
   address: string | null;
   mapsUrl: string | null;
   googleCategory: string | null;
+  phoneValid: boolean;
+  phoneLineType: "mobile" | "landline" | "unknown";
 }
 
 export interface SearchStats {

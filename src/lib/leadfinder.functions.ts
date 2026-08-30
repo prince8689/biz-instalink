@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { fetchBusinesses, type RawBusiness } from "./leadfinder/google.server";
 import { findVerifiedInstagram } from "./leadfinder/instagram.server";
 import { getDb } from "./leadfinder/db.server";
+import { verifyPhone } from "./leadfinder/phone.server";
 import type {
   BusinessCandidate,
   InstagramMatch,
@@ -46,16 +47,23 @@ export const searchBusinesses = createServerFn({ method: "POST" })
         (b): b is RawBusiness & { phone: string; rating: number; ratingCount: number } =>
           Boolean(b.name) && Boolean(b.phone) && b.rating != null && b.ratingCount != null,
       )
-      .map((b) => ({
+      .map((b) => {
+        const check = verifyPhone(b.phone);
+        return {
         placeId: b.placeId,
         name: b.name,
-        phone: b.phone,
+        phone: check.normalized || b.phone,
+        phoneValid: check.valid,
+        phoneLineType: check.lineType,
         rating: b.rating,
         ratingCount: b.ratingCount,
         address: b.address,
         mapsUrl: b.mapsUrl,
         googleCategory: b.googleCategory,
-      }));
+      };
+      })
+      // Only keep leads whose number is a valid, dialable line.
+      .filter((b) => b.phoneValid);
 
     return {
       businesses: eligible,
@@ -74,10 +82,9 @@ export const searchBusinesses = createServerFn({ method: "POST" })
 export const findInstagram = createServerFn({ method: "POST" })
   .inputValidator((data) => data as { businessName: string; city: string; category: string })
   .handler(async ({ data }): Promise<InstagramMatch | null> => {
+    // Optional: when Serper is missing or out of credits we fall back to a
+    // free web search provider inside findVerifiedInstagram.
     const apiKey = process.env["SERPER_API_KEY"];
-    if (!apiKey) {
-      throw new Error("Web search API key is not configured on the server.");
-    }
     if (!data.businessName?.trim()) return null;
     return findVerifiedInstagram(data.businessName.trim(), data.city.trim(), data.category.trim(), apiKey);
   });
@@ -128,6 +135,8 @@ export const saveSearch = createServerFn({ method: "POST" })
         instagram_url: lead.instagram_url,
         instagram_handle: lead.instagram_handle,
         instagram_verified: lead.instagram_verified,
+        phone_valid: lead.phone_valid,
+        phone_line_type: lead.phone_line_type,
         status: "verified",
       }));
       const { error: leadsError } = await db.from("lead_results").insert(rows);
@@ -167,7 +176,7 @@ export const getSearchResults = createServerFn({ method: "POST" })
     const { data: rows, error } = await db
       .from("lead_results")
       .select(
-        "business_name, phone, rating, rating_count, address, category, city, google_maps_url, place_id, instagram_url, instagram_handle, instagram_verified",
+        "business_name, phone, rating, rating_count, address, category, city, google_maps_url, place_id, instagram_url, instagram_handle, instagram_verified, phone_valid, phone_line_type",
       )
       .eq("search_id", data.searchId)
       .order("business_name", { ascending: true });
