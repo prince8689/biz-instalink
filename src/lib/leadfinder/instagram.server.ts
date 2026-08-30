@@ -172,7 +172,7 @@ export async function findVerifiedInstagram(
     // Exact handle/name match needs weaker supporting signals.
     const accept =
       handleSharesName &&
-      (best.nameScore >= 0.99 ? best.score >= 0.6 : best.score >= 0.8 && best.nameScore >= 0.5);
+      (best.nameScore >= 0.99 ? best.score >= 0.55 : best.score >= 0.65 && best.nameScore >= 0.5);
     if (accept) {
       return {
         url: best.candidate.url,
