@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -9,11 +9,12 @@ import {
   searchBusinesses,
 } from "@/lib/leadfinder.functions";
 import type { SearchRecord, VerifiedLead } from "@/lib/leadfinder/types";
+import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "AI Business Lead Finder — Verified Local Leads with Instagram" },
+      { title: "LeadRadar AI — Verified Local Business Leads & Instagram" },
       {
         name: "description",
         content:
@@ -21,7 +22,7 @@ export const Route = createFileRoute("/")({
       },
       {
         property: "og:title",
-        content: "AI Business Lead Finder — Verified Local Leads with Instagram",
+        content: "LeadRadar AI — Verified Local Business Leads & Instagram",
       },
       {
         property: "og:description",
@@ -93,6 +94,7 @@ function Index() {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [copied, setCopied] = useState(false);
   const runIdRef = useRef(0);
+  const { user, loading: authLoading, signOut } = useAuth();
 
   const refreshHistory = () => {
     listSearches()
@@ -214,23 +216,22 @@ function Index() {
             match = null; // treat lookup failures as "not found"
           }
           checked++;
-         if (match?.url) {
-  verifiedLeads.push({
-    business_name: business.name,
-    phone: business.phone,
-    rating: business.rating,
-    rating_count: business.ratingCount,
-    address: business.address,
-    category: config.category,
-    city: config.city,
-    google_maps_url: business.mapsUrl,
-    place_id: business.placeId,
-    instagram_url: match.url,
-    instagram_handle: match.handle ?? "",
-    instagram_verified: true,
-  });
-
-          }
+          verifiedLeads.push({
+            business_name: business.name,
+            phone: business.phone,
+            rating: business.rating,
+            rating_count: business.ratingCount,
+            address: business.address,
+            category: config.category,
+            city: config.city,
+            google_maps_url: business.mapsUrl,
+            place_id: business.placeId,
+            instagram_url: match?.url ?? "",
+            instagram_handle: match?.handle ?? "",
+            instagram_verified: Boolean(match?.url),
+            phone_valid: business.phoneValid,
+            phone_line_type: business.phoneLineType,
+          });
           if (isCurrent()) {
             setProgress({
               phase: "instagram",
@@ -381,6 +382,26 @@ function Index() {
       <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
         {/* Header */}
         <header className="mb-8">
+          <div className="mb-5 flex items-center justify-end gap-3 text-sm">
+            {authLoading ? null : user ? (
+              <>
+                <span className="text-muted-foreground">{user.email}</span>
+                <button
+                  onClick={() => signOut()}
+                  className="rounded-lg border bg-background px-3.5 py-2 text-xs font-semibold text-foreground transition hover:bg-accent"
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/auth"
+                className="rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90"
+              >
+                Sign in / Sign up
+              </Link>
+            )}
+          </div>
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
               <svg
@@ -394,13 +415,15 @@ function Index() {
                 className="h-5 w-5"
                 aria-hidden="true"
               >
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" />
+                <path d="M19.07 4.93A10 10 0 1 1 4.93 19.07" />
+                <path d="M15.54 8.46a5 5 0 1 0-7.08 7.08" />
+                <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+                <path d="M12 12 21 3" />
               </svg>
             </div>
             <div>
               <h1 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                AI Business Lead Finder
+                LeadRadar AI
               </h1>
               <p className="text-sm text-muted-foreground">
                 Find verified local businesses with Google ratings and official Instagram profiles.
@@ -600,6 +623,7 @@ function Index() {
                     <th className="px-5 py-3 font-semibold">Mobile Number</th>
                     <th className="px-5 py-3 font-semibold">Rating</th>
                     <th className="px-5 py-3 font-semibold">Number of Ratings</th>
+                    <th className="px-5 py-3 font-semibold">Phone Check</th>
                     <th className="px-5 py-3 font-semibold">Instagram</th>
                     <th className="px-5 py-3 font-semibold">
                       <span className="sr-only">More details</span>
@@ -702,14 +726,30 @@ function LeadRow({
         </td>
         <td className="px-5 py-3 text-foreground">{lead.rating_count}</td>
         <td className="px-5 py-3">
-          <a
-            href={lead.instagram_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-primary underline-offset-2 hover:underline"
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+              lead.phone_valid
+                ? "bg-success text-success-foreground"
+                : "bg-muted text-muted-foreground"
+            }`}
           >
-            {lead.instagram_url}
-          </a>
+            {lead.phone_valid ? "Active line" : "Unverified"}
+            {lead.phone_line_type !== "unknown" ? ` · ${lead.phone_line_type}` : ""}
+          </span>
+        </td>
+        <td className="px-5 py-3">
+          {lead.instagram_url ? (
+            <a
+              href={lead.instagram_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-primary underline-offset-2 hover:underline"
+            >
+              {lead.instagram_handle ? `@${lead.instagram_handle}` : lead.instagram_url}
+            </a>
+          ) : (
+            <span className="text-xs text-muted-foreground">Not found</span>
+          )}
         </td>
         <td className="px-5 py-3">
           <button
@@ -724,15 +764,27 @@ function LeadRow({
       </tr>
       {expanded && (
         <tr className="bg-muted/20">
-          <td colSpan={6} className="px-5 py-4">
+          <td colSpan={7} className="px-5 py-4">
             <dl className="grid grid-cols-1 gap-x-8 gap-y-2 text-xs sm:grid-cols-2 lg:grid-cols-3">
               <Detail label="Address" value={lead.address ?? "—"} />
               <Detail label="Category" value={lead.category ?? "—"} />
               <Detail label="Place ID" value={lead.place_id ?? "—"} mono />
-              <Detail label="Instagram Handle" value={`@${lead.instagram_handle}`} mono />
+              <Detail
+                label="Instagram Handle"
+                value={lead.instagram_handle ? `@${lead.instagram_handle}` : "—"}
+                mono
+              />
+              <Detail
+                label="Phone Verification"
+                value={
+                  lead.phone_valid
+                    ? `Valid ${lead.phone_line_type === "unknown" ? "line" : lead.phone_line_type}`
+                    : "Not dialable"
+                }
+              />
               <Detail
                 label="Instagram Verification"
-                value={lead.instagram_verified ? "Verified" : "Unverified"}
+                value={lead.instagram_verified ? "Verified" : "Not found"}
               />
               <Detail label="Search Status" value="Complete" />
               <div className="sm:col-span-2 lg:col-span-3">
