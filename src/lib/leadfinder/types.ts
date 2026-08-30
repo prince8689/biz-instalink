@@ -17,6 +17,8 @@ export interface BusinessCandidate {
   address: string | null;
   mapsUrl: string | null;
   googleCategory: string | null;
+  phoneValid: boolean;
+  phoneLineType: "mobile" | "landline" | "unknown";
 }
 
 export interface SearchStats {
@@ -42,7 +44,7 @@ export interface InstagramMatch {
   sourceQuery: string;
 }
 
-/** A fully verified lead — the only shape shown in the final table. */
+/** A verified lead: valid phone + complete Google data (Instagram optional). */
 export interface VerifiedLead {
   business_name: string;
   phone: string;
@@ -56,6 +58,9 @@ export interface VerifiedLead {
   instagram_url: string;
   instagram_handle: string;
   instagram_verified: boolean;
+  /** Phone passed dialability validation. */
+  phone_valid: boolean;
+  phone_line_type: "mobile" | "landline" | "unknown";
 }
 
 export interface SearchRecord {

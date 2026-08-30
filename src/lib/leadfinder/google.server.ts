@@ -93,8 +93,9 @@ async function searchPage(
 }
 
 /**
- * Searches Google Places for "<category> in <city>", walks all available
- * result pages and removes duplicates by Place ID (falling back to
+ * Searches Google Places the way Google Maps does: several query variants
+ * (in / near / around / nearby) so nearby-area businesses also show up,
+ * walking all available pages and deduping by Place ID (falling back to
  * normalized name + address).
  */
 export async function fetchBusinesses(
@@ -102,43 +103,59 @@ export async function fetchBusinesses(
   category: string,
   apiKey: string,
 ): Promise<{ businesses: RawBusiness[]; rawCount: number }> {
-  const textQuery = `${category} in ${city}`;
+  const queries = [
+    `${category} in ${city}`,
+    `${category} near ${city}`,
+    `${category} around ${city}`,
+    `best ${category} near ${city}`,
+    `${city} ${category}`,
+  ];
 
   const seen = new Set<string>();
   const businesses: RawBusiness[] = [];
   let rawCount = 0;
-  let pageToken: string | undefined;
+  let firstError: unknown;
 
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const data = await searchPage(apiKey, textQuery, pageToken);
-    const places = data.places ?? [];
-    rawCount += places.length;
+  for (const textQuery of queries) {
+    let pageToken: string | undefined;
+    for (let page = 0; page < MAX_PAGES; page++) {
+      let data: SearchTextResponse;
+      try {
+        data = await searchPage(apiKey, textQuery, pageToken);
+      } catch (error) {
+        firstError ??= error;
+        break;
+      }
+      const places = data.places ?? [];
+      rawCount += places.length;
 
-    for (const place of places) {
-      const key = place.id
-        ? `pid:${place.id}`
-        : `na:${normalizeKeyPart(place.displayName?.text)}|${normalizeKeyPart(place.formattedAddress)}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      businesses.push({
-        placeId: place.id ?? null,
-        name: place.displayName?.text ?? "",
-        phone: place.internationalPhoneNumber ?? place.nationalPhoneNumber ?? null,
-        rating: place.rating ?? null,
-        ratingCount: place.userRatingCount ?? null,
-        address: place.formattedAddress ?? null,
-        mapsUrl:
-          place.googleMapsUri ??
-          (place.id ? `https://www.google.com/maps/place/?q=place_id:${place.id}` : null),
-        googleCategory: place.primaryTypeDisplayName?.text ?? null,
-      });
+      for (const place of places) {
+        const key = place.id
+          ? `pid:${place.id}`
+          : `na:${normalizeKeyPart(place.displayName?.text)}|${normalizeKeyPart(place.formattedAddress)}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        businesses.push({
+          placeId: place.id ?? null,
+          name: place.displayName?.text ?? "",
+          phone: place.internationalPhoneNumber ?? place.nationalPhoneNumber ?? null,
+          rating: place.rating ?? null,
+          ratingCount: place.userRatingCount ?? null,
+          address: place.formattedAddress ?? null,
+          mapsUrl:
+            place.googleMapsUri ??
+            (place.id ? `https://www.google.com/maps/place/?q=place_id:${place.id}` : null),
+          googleCategory: place.primaryTypeDisplayName?.text ?? null,
+        });
+      }
+
+      if (!data.nextPageToken) break;
+      pageToken = data.nextPageToken;
+      // The next page token needs a brief moment before it becomes valid.
+      await sleep(1500);
     }
-
-    if (!data.nextPageToken) break;
-    pageToken = data.nextPageToken;
-    // The next page token needs a brief moment before it becomes valid.
-    await sleep(2000);
   }
 
+  if (businesses.length === 0 && firstError) throw firstError;
   return { businesses, rawCount };
 }
