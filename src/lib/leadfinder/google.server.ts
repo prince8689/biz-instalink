@@ -14,6 +14,7 @@ const FIELD_MASK = [
   "places.nationalPhoneNumber",
   "places.googleMapsUri",
   "places.primaryTypeDisplayName",
+  "places.websiteUri",
   "nextPageToken",
 ].join(",");
 
@@ -26,6 +27,7 @@ export interface RawBusiness {
   address: string | null;
   mapsUrl: string | null;
   googleCategory: string | null;
+  website: string | null;
 }
 
 interface PlaceResult {
@@ -38,6 +40,7 @@ interface PlaceResult {
   nationalPhoneNumber?: string;
   googleMapsUri?: string;
   primaryTypeDisplayName?: { text?: string };
+  websiteUri?: string;
 }
 
 interface SearchTextResponse {
@@ -146,6 +149,7 @@ export async function fetchBusinesses(
             place.googleMapsUri ??
             (place.id ? `https://www.google.com/maps/place/?q=place_id:${place.id}` : null),
           googleCategory: place.primaryTypeDisplayName?.text ?? null,
+          website: place.websiteUri ?? null,
         });
       }
 

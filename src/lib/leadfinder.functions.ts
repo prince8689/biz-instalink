@@ -60,6 +60,7 @@ export const searchBusinesses = createServerFn({ method: "POST" })
         address: b.address,
         mapsUrl: b.mapsUrl,
         googleCategory: b.googleCategory,
+        instagramFromListing: /instagram\.com\//i.test(b.website ?? "") ? b.website : null,
       };
       })
       // Only keep leads whose number is a valid, dialable line.

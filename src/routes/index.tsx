@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -9,7 +9,6 @@ import {
   searchBusinesses,
 } from "@/lib/leadfinder.functions";
 import type { SearchRecord, VerifiedLead } from "@/lib/leadfinder/types";
-import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -94,7 +93,6 @@ function Index() {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [copied, setCopied] = useState(false);
   const runIdRef = useRef(0);
-  const { user, loading: authLoading, signOut } = useAuth();
 
   const refreshHistory = () => {
     listSearches()
@@ -207,13 +205,19 @@ function Index() {
         while (queue.length > 0) {
           if (!isCurrent()) return;
           const business = queue.shift()!;
-          let match = null;
+          let match: { url: string; handle: string | null } | null = null;
+          const listingIg = business.instagramFromListing;
+          if (listingIg) {
+            const handle = listingIg.replace(/\/+$/, "").split("/").pop() ?? "";
+            match = { url: listingIg, handle: handle || null };
+          }
           try {
+            if (match) throw new Error("skip");
             match = await findInstagram({
               data: { businessName: business.name, city: config.city, category: config.category },
             });
           } catch {
-            match = null; // treat lookup failures as "not found"
+            // keep the listing match if we had one; otherwise "not found"
           }
           checked++;
           verifiedLeads.push({
@@ -382,26 +386,6 @@ function Index() {
       <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
         {/* Header */}
         <header className="mb-8">
-          <div className="mb-5 flex items-center justify-end gap-3 text-sm">
-            {authLoading ? null : user ? (
-              <>
-                <span className="text-muted-foreground">{user.email}</span>
-                <button
-                  onClick={() => signOut()}
-                  className="rounded-lg border bg-background px-3.5 py-2 text-xs font-semibold text-foreground transition hover:bg-accent"
-                >
-                  Sign out
-                </button>
-              </>
-            ) : (
-              <Link
-                to="/auth"
-                className="rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90"
-              >
-                Sign in / Sign up
-              </Link>
-            )}
-          </div>
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
               <svg
