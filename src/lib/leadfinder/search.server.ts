@@ -84,25 +84,41 @@ async function duckDuckGoSearch(query: string): Promise<SearchHit[]> {
       for (const link of raw) hits.push({ link, title: "", snippet: "" });
     }
     return hits;
-  }, 20000);
+  }, 8000);
 }
 
 /**
  * Runs a web search using whichever provider is available.
  * Never throws: an empty array means "no results / provider unavailable".
  */
+let serperDisabledUntil = 0;
+let ddgFailures = 0;
+let ddgDisabledUntil = 0;
+
 export async function webSearch(query: string, serperKey?: string): Promise<SearchHit[]> {
-  if (serperKey) {
+  const now = Date.now();
+  if (serperKey && now > serperDisabledUntil) {
     try {
       const hits = await serperSearch(query, serperKey);
       if (hits.length > 0) return hits;
     } catch {
-      // fall through to the free provider
+      // Out of credits / invalid key: stop hammering it for a while.
+      serperDisabledUntil = Date.now() + 5 * 60_000;
     }
   }
+  if (Date.now() < ddgDisabledUntil) return [];
   try {
-    return await duckDuckGoSearch(query);
+    const hits = await duckDuckGoSearch(query);
+    if (hits.length === 0) {
+      ddgFailures++;
+    } else {
+      ddgFailures = 0;
+    }
+    if (ddgFailures >= 3) ddgDisabledUntil = Date.now() + 5 * 60_000;
+    return hits;
   } catch {
+    ddgFailures++;
+    if (ddgFailures >= 3) ddgDisabledUntil = Date.now() + 5 * 60_000;
     return [];
   }
 }
