@@ -208,8 +208,9 @@ function Index() {
           let match: { url: string; handle: string | null } | null = null;
           const listingIg = business.instagramFromListing;
           if (listingIg) {
-            const handle = listingIg.replace(/\/+$/, "").split("/").pop() ?? "";
-            match = { url: listingIg, handle: handle || null };
+            const clean = listingIg.split(/[?#]/)[0]!.replace(/\/+$/, "");
+            const handle = clean.split("/").pop() ?? "";
+            match = { url: clean, handle: handle || null };
           }
           try {
             if (match) throw new Error("skip");
