@@ -17,6 +17,8 @@ export interface BusinessCandidate {
   address: string | null;
   mapsUrl: string | null;
   googleCategory: string | null;
+  /** Instagram URL taken straight from the Google listing's website field. */
+  instagramFromListing: string | null;
   phoneValid: boolean;
   phoneLineType: "mobile" | "landline" | "unknown";
 }
