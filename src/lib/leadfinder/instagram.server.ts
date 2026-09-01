@@ -4,6 +4,7 @@
 // verification signals against the business data.
 
 import { webSearch, type SearchHit } from "./search.server";
+import { buildInstagramPrompt, findInstagramWithGemini } from "./gemini.server";
 
 const NON_PROFILE_SEGMENTS = new Set([
   "p",
