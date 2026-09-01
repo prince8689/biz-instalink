@@ -87,6 +87,39 @@ async function duckDuckGoSearch(query: string): Promise<SearchHit[]> {
   }, 8000);
 }
 
+async function ddgHtmlSearch(query: string): Promise<SearchHit[]> {
+  return withTimeout(async (signal) => {
+    const res = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36",
+        Accept: "text/html",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      signal,
+    });
+    if (!res.ok) throw new Error(`ddghtml ${res.status}`);
+    const html = await res.text();
+    const hits: SearchHit[] = [];
+    const blockRe = /<a[^>]+class="[^"]*result__a[^"]*"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>([\s\S]{0,1500}?)(?=<a[^>]+class="[^"]*result__a|$)/gi;
+    let m: RegExpExecArray | null;
+    while ((m = blockRe.exec(html)) !== null) {
+      let link = decodeEntities(m[1]!);
+      const uddg = link.match(/[?&]uddg=([^&]+)/);
+      if (uddg) link = decodeURIComponent(uddg[1]!);
+      if (link.startsWith("//")) link = `https:${link}`;
+      if (!/^https?:\/\//.test(link)) continue;
+      const snippetMatch = m[3]!.match(/class="[^"]*result__snippet[^"]*"[^>]*>([\s\S]*?)<\/a>/i);
+      hits.push({
+        link,
+        title: decodeEntities(m[2]!),
+        snippet: snippetMatch ? decodeEntities(snippetMatch[1]!) : "",
+      });
+    }
+    return hits;
+  }, 10000);
+}
+
 async function bingSearch(query: string): Promise<SearchHit[]> {
   return withTimeout(async (signal) => {
     const res = await fetch(`https://www.bing.com/search?q=${encodeURIComponent(query)}&count=20`, {
@@ -140,7 +173,8 @@ export async function webSearch(query: string, serperKey?: string): Promise<Sear
   }
   if (Date.now() >= ddgDisabledUntil) {
     try {
-      const hits = await duckDuckGoSearch(query);
+      let hits = await ddgHtmlSearch(query);
+      if (hits.length === 0) hits = await duckDuckGoSearch(query);
       if (hits.length === 0) {
         ddgFailures++;
       } else {
