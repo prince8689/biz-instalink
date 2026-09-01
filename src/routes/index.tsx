@@ -221,22 +221,26 @@ function Index() {
             // keep the listing match if we had one; otherwise "not found"
           }
           checked++;
-          verifiedLeads.push({
-            business_name: business.name,
-            phone: business.phone,
-            rating: business.rating,
-            rating_count: business.ratingCount,
-            address: business.address,
-            category: config.category,
-            city: config.city,
-            google_maps_url: business.mapsUrl,
-            place_id: business.placeId,
-            instagram_url: match?.url ?? "",
-            instagram_handle: match?.handle ?? "",
-            instagram_verified: Boolean(match?.url),
-            phone_valid: business.phoneValid,
-            phone_line_type: business.phoneLineType,
-          });
+          // Only keep leads that have a verified Instagram profile.
+          if (match?.url) {
+            verifiedLeads.push({
+              business_name: business.name,
+              phone: business.phone,
+              rating: business.rating,
+              rating_count: business.ratingCount,
+              address: business.address,
+              category: config.category,
+              city: config.city,
+              google_maps_url: business.mapsUrl,
+              place_id: business.placeId,
+              instagram_url: match.url,
+              instagram_handle: match.handle ?? "",
+              instagram_verified: true,
+              phone_valid: business.phoneValid,
+              phone_line_type: business.phoneLineType,
+            });
+          }
+
           if (isCurrent()) {
             setProgress({
               phase: "instagram",
