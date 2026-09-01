@@ -68,6 +68,38 @@ export function normalizeInstagramUrl(raw: string): { url: string; handle: strin
   return { url: `https://www.instagram.com/${handle}/`, handle };
 }
 
+/** Compact alphanumeric form, e.g. "The Wardrobe Shop" -> "wardrobeshop". */
+function compact(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function initials(value: string): string {
+  return tokenize(value)
+    .map((t) => t[0]!)
+    .join("");
+}
+
+/**
+ * Accepts a handle when it derives from the business name in any realistic
+ * way: shared token, compacted containment, prefix overlap or initials.
+ */
+export function handleMatchesName(handle: string, businessName: string): boolean {
+  const handleText = handle.replace(/[._]/g, " ");
+  const handleCompact = compact(handle);
+  const nameCompact = compact(businessName);
+  if (!handleCompact || !nameCompact) return false;
+  if (handleCompact.includes(nameCompact) || nameCompact.includes(handleCompact)) return true;
+
+  const tokens = tokenize(businessName);
+  for (const token of tokens) {
+    if (handleText.includes(token) || handleCompact.includes(token)) return true;
+    if (token.length >= 5 && handleCompact.includes(token.slice(0, 5))) return true;
+  }
+  const ini = initials(businessName);
+  if (ini.length >= 2 && handleCompact.startsWith(ini)) return true;
+  return false;
+}
+
 function tokenize(value: string): string[] {
   return value
     .toLowerCase()
@@ -128,7 +160,11 @@ export async function findVerifiedInstagram(
     `Find the official Instagram profile handle of "${businessName}" in ${city} (a ${category} business). Return the exact instagram.com URL.`,
     `"${businessName}" "${city}" Instagram`,
     `site:instagram.com "${businessName}" "${city}"`,
+    `site:instagram.com "${businessName}"`,
+    `${businessName} ${city} ${category} instagram profile`,
   ];
+
+  const contextLinks: string[] = [];
 
   const bestByHandle = new Map<string, { candidate: Candidate; score: number; nameScore: number }>();
 
@@ -146,6 +182,7 @@ export async function findVerifiedInstagram(
         snippet: item.snippet ?? "",
         sourceQuery: query,
       };
+      contextLinks.push(`${normalized.url} — ${candidate.title}`);
       const { score, nameScore } = scoreCandidate(candidate, businessName, city, category);
       const existing = bestByHandle.get(normalized.handle);
       if (!existing || score > existing.score) {
@@ -163,17 +200,12 @@ export async function findVerifiedInstagram(
     // The handle itself must share a meaningful token with the business
     // name — a snippet-only mention (e.g. an aggregator page listing many
     // businesses) is not enough to accept a profile.
-    const nameTokens = tokenize(businessName);
-    const handleText = best.candidate.handle.replace(/[._]/g, " ");
-    const strongTokens = nameTokens.filter((t) => t.length > 3);
-    const handleSharesName = (strongTokens.length > 0 ? strongTokens : nameTokens).some((t) =>
-      handleText.includes(t),
-    );
+    const handleSharesName = handleMatchesName(best.candidate.handle, businessName);
 
     // Exact handle/name match needs weaker supporting signals.
     const accept =
       handleSharesName &&
-      (best.nameScore >= 0.99 ? best.score >= 0.55 : best.score >= 0.65 && best.nameScore >= 0.5);
+      (best.nameScore >= 0.99 ? best.score >= 0.45 : best.score >= 0.5 && best.nameScore >= 0.4);
     if (accept) {
       return {
         url: best.candidate.url,
@@ -187,12 +219,9 @@ export async function findVerifiedInstagram(
   }
 
   // Final step: ask Gemini with the dynamic prompt.
-  const ai = await findInstagramWithGemini(businessName, city, category);
+  const ai = await findInstagramWithGemini(businessName, city, category, contextLinks);
   if (ai) {
-    const nameTokens = tokenize(businessName);
-    const handleText = ai.handle.replace(/[._]/g, " ");
-    const strong = nameTokens.filter((t) => t.length > 3);
-    const shares = (strong.length > 0 ? strong : nameTokens).some((t) => handleText.includes(t));
+    const shares = handleMatchesName(ai.handle, businessName);
     if (shares && !NON_PROFILE_SEGMENTS.has(ai.handle)) {
       return {
         url: ai.url,
