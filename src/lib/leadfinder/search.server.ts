@@ -87,6 +87,38 @@ async function duckDuckGoSearch(query: string): Promise<SearchHit[]> {
   }, 8000);
 }
 
+async function bingSearch(query: string): Promise<SearchHit[]> {
+  return withTimeout(async (signal) => {
+    const res = await fetch(`https://www.bing.com/search?q=${encodeURIComponent(query)}&count=20`, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36",
+        Accept: "text/html",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      signal,
+    });
+    if (!res.ok) throw new Error(`bing ${res.status}`);
+    const html = await res.text();
+    const hits: SearchHit[] = [];
+    const re = /<h2><a href="(https?:\/\/[^"]+)"[^>]*>([\s\S]*?)<\/a><\/h2>([\s\S]{0,1200}?)<\/li>/gi;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html)) !== null) {
+      const snippetMatch = m[3]!.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
+      hits.push({
+        link: decodeEntities(m[1]!),
+        title: decodeEntities(m[2]!),
+        snippet: snippetMatch ? decodeEntities(snippetMatch[1]!) : "",
+      });
+    }
+    if (hits.length === 0) {
+      const raw = html.match(/https?:\/\/(?:www\.)?instagram\.com\/[A-Za-z0-9._]+/gi) ?? [];
+      for (const link of raw) hits.push({ link, title: "", snippet: "" });
+    }
+    return hits;
+  }, 10000);
+}
+
 /**
  * Runs a web search using whichever provider is available.
  * Never throws: an empty array means "no results / provider unavailable".
@@ -106,19 +138,25 @@ export async function webSearch(query: string, serperKey?: string): Promise<Sear
       serperDisabledUntil = Date.now() + 5 * 60_000;
     }
   }
-  if (Date.now() < ddgDisabledUntil) return [];
-  try {
-    const hits = await duckDuckGoSearch(query);
-    if (hits.length === 0) {
+  if (Date.now() >= ddgDisabledUntil) {
+    try {
+      const hits = await duckDuckGoSearch(query);
+      if (hits.length === 0) {
+        ddgFailures++;
+      } else {
+        ddgFailures = 0;
+        return hits;
+      }
+      if (ddgFailures >= 3) ddgDisabledUntil = Date.now() + 5 * 60_000;
+    } catch {
       ddgFailures++;
-    } else {
-      ddgFailures = 0;
+      if (ddgFailures >= 3) ddgDisabledUntil = Date.now() + 5 * 60_000;
     }
-    if (ddgFailures >= 3) ddgDisabledUntil = Date.now() + 5 * 60_000;
-    return hits;
+  }
+  // Last resort: Bing HTML (free, no key).
+  try {
+    return await bingSearch(query);
   } catch {
-    ddgFailures++;
-    if (ddgFailures >= 3) ddgDisabledUntil = Date.now() + 5 * 60_000;
     return [];
   }
 }
