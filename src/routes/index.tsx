@@ -255,7 +255,7 @@ function Index() {
           }
         }
       };
-      await Promise.all([worker(), worker(), worker()]);
+      await Promise.all([worker(), worker(), worker(), worker(), worker(), worker()]);
       if (!isCurrent()) return;
 
       // STEP 10: persist + show only complete verified leads.
