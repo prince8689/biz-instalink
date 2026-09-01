@@ -120,6 +120,32 @@ async function ddgHtmlSearch(query: string): Promise<SearchHit[]> {
   }, 10000);
 }
 
+/** Free reader-proxy search (returns markdown) — works when direct HTML is blocked. */
+async function jinaSearch(query: string): Promise<SearchHit[]> {
+  return withTimeout(async (signal) => {
+    const target = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+    const res = await fetch(`https://r.jina.ai/${target}`, {
+      headers: { Accept: "text/plain" },
+      signal,
+    });
+    if (!res.ok) throw new Error(`jina ${res.status}`);
+    const text = await res.text();
+    const hits: SearchHit[] = [];
+    const re = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) {
+      const link = m[2]!;
+      if (/duckduckgo\.com/i.test(link)) continue;
+      hits.push({
+        link,
+        title: m[1]!.trim(),
+        snippet: text.slice(m.index, m.index + 400).replace(/\s+/g, " "),
+      });
+    }
+    return hits;
+  }, 20000);
+}
+
 async function bingSearch(query: string): Promise<SearchHit[]> {
   return withTimeout(async (signal) => {
     const res = await fetch(`https://www.bing.com/search?q=${encodeURIComponent(query)}&count=20`, {
@@ -174,6 +200,7 @@ export async function webSearch(query: string, serperKey?: string): Promise<Sear
   if (Date.now() >= ddgDisabledUntil) {
     try {
       let hits = await ddgHtmlSearch(query);
+      if (hits.length === 0) hits = await jinaSearch(query);
       if (hits.length === 0) hits = await duckDuckGoSearch(query);
       if (hits.length === 0) {
         ddgFailures++;
