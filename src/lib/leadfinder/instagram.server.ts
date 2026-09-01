@@ -185,5 +185,24 @@ export async function findVerifiedInstagram(
     // Otherwise keep searching with the next (more specific) fallback query.
   }
 
+  // Final step: ask Gemini with the dynamic prompt.
+  const ai = await findInstagramWithGemini(businessName, city, category);
+  if (ai) {
+    const nameTokens = tokenize(businessName);
+    const handleText = ai.handle.replace(/[._]/g, " ");
+    const strong = nameTokens.filter((t) => t.length > 3);
+    const shares = (strong.length > 0 ? strong : nameTokens).some((t) => handleText.includes(t));
+    if (shares && !NON_PROFILE_SEGMENTS.has(ai.handle)) {
+      return {
+        url: ai.url,
+        handle: ai.handle,
+        verified: true,
+        confidence: 0.8,
+        sourceQuery: buildInstagramPrompt(businessName, city, category),
+      };
+    }
+  }
+
   return null;
 }
+
