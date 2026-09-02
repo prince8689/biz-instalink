@@ -134,7 +134,9 @@ async function jinaSearch(query: string): Promise<SearchHit[]> {
     const re = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g;
     let m: RegExpExecArray | null;
     while ((m = re.exec(text)) !== null) {
-      const link = m[2]!;
+      let link = m[2]!;
+      const uddg = link.match(/[?&]uddg=([^&]+)/);
+      if (uddg) link = decodeURIComponent(uddg[1]!);
       if (/duckduckgo\.com/i.test(link)) continue;
       hits.push({
         link,
