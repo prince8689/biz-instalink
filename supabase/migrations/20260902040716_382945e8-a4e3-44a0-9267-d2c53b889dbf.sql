@@ -1,0 +1,2 @@
+ALTER TABLE public.lead_searches ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.lead_results ENABLE ROW LEVEL SECURITY;
