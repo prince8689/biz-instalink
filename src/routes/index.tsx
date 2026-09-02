@@ -242,6 +242,8 @@ function Index() {
           }
 
           if (isCurrent()) {
+            // Show every verified lead the moment it is confirmed.
+            setLeads([...verifiedLeads].sort((a, b) => b.rating - a.rating));
             setProgress({
               phase: "instagram",
               message: `Instagram verification: ${checked} / ${eligible.length}`,
@@ -255,7 +257,7 @@ function Index() {
           }
         }
       };
-      await Promise.all([worker(), worker(), worker(), worker(), worker(), worker()]);
+      await Promise.all(Array.from({ length: 10 }, () => worker()));
       if (!isCurrent()) return;
 
       // STEP 10: persist + show only complete verified leads.

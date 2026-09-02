@@ -1,0 +1,12 @@
+GRANT SELECT, INSERT ON public.lead_searches TO anon, authenticated;
+GRANT SELECT, INSERT ON public.lead_results TO anon, authenticated;
+GRANT ALL ON public.lead_searches TO service_role;
+GRANT ALL ON public.lead_results TO service_role;
+DROP POLICY IF EXISTS "public read searches" ON public.lead_searches;
+DROP POLICY IF EXISTS "public insert searches" ON public.lead_searches;
+DROP POLICY IF EXISTS "public read results" ON public.lead_results;
+DROP POLICY IF EXISTS "public insert results" ON public.lead_results;
+CREATE POLICY "public read searches" ON public.lead_searches FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "public insert searches" ON public.lead_searches FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "public read results" ON public.lead_results FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "public insert results" ON public.lead_results FOR INSERT TO anon, authenticated WITH CHECK (true);
