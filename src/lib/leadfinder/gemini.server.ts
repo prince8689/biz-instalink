@@ -2,7 +2,7 @@
 // Uses the exact user-defined prompt shape and returns a normalized handle.
 
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const MODELS = ["google/gemini-2.5-flash", "google/gemini-2.5-pro"];
+const MODELS = ["google/gemini-2.5-flash"];
 
 export function buildInstagramPrompt(businessName: string, area: string, category: string): string {
   return `Find the official Instagram profile handle of "${businessName}" in "${area}" (a ${category} business). Return the exact instagram.com URL.`;
